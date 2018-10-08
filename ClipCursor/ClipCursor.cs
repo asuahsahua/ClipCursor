@@ -72,35 +72,21 @@ namespace ClipCursor
             string selectedIndexStr;
             IntPtr selectedWindowHandle;
             string selectedWindowTitle = string.Empty;
+            string targetWindowTitle = "World of Warcraft";
 
             while (true)
             {
-                Console.WriteLine("Available windows : ");
-                windowHandles = GetAllWindowHandles();
-                Console.Write("Select a window by entering its index number : ");
-                selectedIndexStr = Console.ReadLine();
-
-                // Validate user choice
-                if (!int.TryParse(selectedIndexStr, out int selectedIndex) ||
-                    selectedIndex < 1 ||
-                    selectedIndex > windowHandles.Count)
+                IntPtr? windowHandle = GetWindowHandle(targetWindowTitle);
+                if (windowHandle == null)
                 {
                     Console.Clear();
-                    Console.WriteLine("Only use numbers that are on the list!");
+                    Console.WriteLine("Could not find window with the given title, sleeping for a second...");
+                    Thread.Sleep(1000);
                     continue;
                 }
 
-                selectedWindowHandle = windowHandles[selectedIndex - 1];
-                selectedWindowTitle = GetWindowText(selectedWindowHandle, WindowTitleMaxLength);
-                if (selectedWindowTitle == null)
-                {
-                    Console.WriteLine("The selected Window doesn't exists anymore!");
-                    continue;
-                }
-
-                Console.WriteLine("Locking Cursor to \"{0:s}\"", selectedWindowTitle);
-
-                LockCursor(selectedWindowHandle);
+                Console.WriteLine("Found window! Locking...");
+                LockCursor(windowHandle.GetValueOrDefault());
             }
         }
 
@@ -178,6 +164,24 @@ namespace ClipCursor
             }
         }
 
+        public static IntPtr? GetWindowHandle(string windowName)
+        {
+            Process[] processList;
+
+            // Print out (almost) every window title and save their handle
+            processList = Process.GetProcesses();
+
+            foreach (Process process in processList)
+            {
+                if (process.MainWindowTitle == windowName)
+                {
+                    return process.MainWindowHandle;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Generate a list of all active window handles and optionally prints out their title texts in a numbered list.
         /// </summary>
@@ -211,15 +215,6 @@ namespace ClipCursor
 
                 if (!string.IsNullOrEmpty(process.MainWindowTitle))
                 {
-                    if (outputWindowNames)
-                    {
-                        string windowTitle = RemoveSpecialCharacters(process.MainWindowTitle);
-                        Console.WriteLine(
-                            "({0:d}) : {1:s}",
-                            indexCounter,
-                            windowTitle.Substring(0, Math.Min(windowTitle.Length, WindowTitleMaxLength)));
-                    }
-
                     windowHandles.Add(process.MainWindowHandle);
                     indexCounter++;
                 }
